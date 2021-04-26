@@ -2,19 +2,49 @@ const express = require('express')
 const fs = require('fs')
 const unzipper = require('unzipper')
 const { transcodeMediaFile } = require('symbl-media')
+const cron = require('node-cron')
+const nodemailer = require('nodemailer')
 
 const app = express()
 
 // Custom Data for Extraction
-let date = '2021-04-23'
 let directory = '/home/rms/recordings/0/100270/auto_rec/'
 let wavDirectory = '/home/extracted_recordings/wav/'
 let mp3Directory = '/home/extracted_recordings/mp3/'
 
-// Extract All
-extractAll(date)
+cron.schedule('00 22 * * *', () => {
+  // Get Todays Date
+  let today = new Date()
+  let dd = String(today.getDate()).padStart(2, '0')
+  let mm = String(today.getMonth() + 1).padStart(2, '0') //January is 0!
+  let yyyy = today.getFullYear()
 
-async function extractAll(date) {
+  let date = yyyy + '-' + mm + '-' + dd
+
+  // Nodemailer settings
+  let transporter = nodemailer.createTransport({
+    host: 'smtp.zoho.in',
+    port: '465',
+    secure: 'true',
+    auth: {
+      user: process.env.EMAIL,
+      pass: process.env.PASSWORD,
+    },
+  })
+
+  let mailOptions = {
+    from: '"HRMS" <deepank.mehta@managementser.com>',
+    to: process.env.IT_EMAIL,
+    cc: process.env.ADMIN_EMAIL,
+    subject: 'Recordings Summary | ' + date,
+    text: '',
+  }
+
+  // Extract All
+  extractAll(date, transporter, mailOptions)
+})
+
+async function extractAll(date, transporter, mailOptions) {
   fs.readdir(directory + date, async (err, files) => {
     if (err) {
       console.log(err)
@@ -27,7 +57,7 @@ async function extractAll(date) {
 
     console.log('done extracting, now start converting')
     // Conversion to mp3
-    mp3(date)
+    mp3(date, transporter, mailOptions)
   })
 }
 
@@ -51,7 +81,7 @@ async function extract(date, file) {
 }
 
 // mp3 convert method
-async function mp3(date) {
+async function mp3(date, transporter, mailOptions) {
   fs.readdir(wavDirectory + date, async (err, files) => {
     if (err) {
       console.log(err)
@@ -73,11 +103,28 @@ async function mp3(date) {
     }
 
     console.log('done converting')
+
     fs.unlinkSync(wavDirectory + date)
+
     console.log('done deleting the ' + date + ' folder from wav directory')
+
+    mailOptions.text = `
+      Hello there,
+
+      Recordings rename process has finished successfully.
+      
+      Thank You,
+      Deepank Mehta`
+
+    transporter.sendMail(mailOptions, (err, data) => {
+      if (err) {
+        console.log(err)
+      }
+      console.log('Email sent successfully')
+    })
   })
 }
 
-app.listen(6000, () => {
-  console.log('app connected')
-})
+const PORT = process.env.PORT || 6000
+
+app.listen(PORT, console.log(`Server running on port ${PORT}`))
