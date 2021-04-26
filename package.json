@@ -1,0 +1,16 @@
+{
+  "name": "recordings_extract_upload",
+  "version": "1.0.0",
+  "description": "This projects extracts the recordings and uploads them to dropbox",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "Deepank Mehta",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.17.1",
+    "symbl-media": "^1.0.3",
+    "unzipper": "^0.10.11"
+  }
+}
